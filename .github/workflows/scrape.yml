@@ -1,0 +1,23 @@
+name: Update coupons daily
+on:
+  schedule:
+    - cron: '0 19 * * *'   # 매일 04:00 KST (UTC 19:00) 실행
+  workflow_dispatch:       # 수동 실행 버튼도 제공
+jobs:
+  scrape:
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout repo
+      uses: actions/checkout@v4
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.12'
+    - name: Install deps
+      run: pip install requests bs4 lxml
+    - name: Run scraper
+      run: python coupon_scraper.py
+    - name: Commit & Push
+      uses: stefanzweifel/git-auto-commit-action@v5
+      with:
+        commit_message: "🤖 Auto-update coupons.json"
