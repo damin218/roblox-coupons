@@ -1,174 +1,154 @@
 #!/usr/bin/env python3
 # coding: utf-8
 """
-자동 쿠폰 스크래퍼
-1) sources_map의 모든 URL에서 코드 추출
-2) 인‑게임 코드 → 형식 & 중복 필터
-3) Roblox 검색 API로 실행 링크 자동 확보
-4) 일반 프로모션 코드 → Roblox Billing API(로그인 세션 필요)로 성공 여부 판별
-5) coupons.json 저장
+auto_coupon_scraper.py
+────────────────────────────────────────────────────────
+• sources_list:  URL + 정규식만 넣으면 끝 (게임 이름 자동 추출)
+• HTML → 만료표시(<del>,<strike>,“expired”) 제거 → 코드 추출
+• clean(): 4–40자 영문/숫자/! 로 필터 + per‑game 중복 제거
+• 실행 링크: 캐시 없으면 Roblox 검색 API(rootPlaceId)로 보충
+• 프로모 코드: Billing API 로 실제 성공 여부 확인(쿠키 필요)
+• coupons.json + widget.html(Tistory) 자동 생성
 """
 
 import os, re, json, datetime, pathlib, urllib.parse, requests
+from collections import defaultdict
 from bs4 import BeautifulSoup
 
-# ── 기본 상수 ──────────────────────────────────────────
-TODAY       = datetime.date.today().isoformat()
-UA          = {"User-Agent": "Mozilla/5.0"}
-PROMO_API   = "https://billing.roblox.com/v1/promocodes/redeem"
-SEARCH_API  = "https://games.roblox.com/v1/games/list?keyword={q}&startRows=0&maxRows=1"
+TODAY = datetime.date.today().isoformat()
+UA    = {"User-Agent":"Mozilla/5.0"}
 
-# ── 한글 번역(있으면) ──────────────────────────────────
-kr_name = {
-    "BLOX FRUITS":          "블록스 프루츠",
-    "SHINDO LIFE":          "신도 라이프",
-    "BEE SWARM SIMULATOR":  "비 스웜 시뮬레이터",
-    "ADOPT ME!":            "어답트 미!",
-    "MURDER MYSTERY 2":     "머더 미스터리 2",
-    "TOWER OF HELL":        "타워 오브 헬",
-    # …필요 시 계속 추가…
-}
+PROMO_API  = "https://billing.roblox.com/v1/promocodes/redeem"
+SEARCH_API = (
+    "https://games.roblox.com/v1/games/list"
+    "?keyword={kw}&startRows=0&maxRows=1"
+)
 
-# ── 링크 캐시(검색 API 호출 최소화) ─────────────────────
-link_cache = {
-    "BLOX FRUITS": "https://www.roblox.com/games/2753915549/Blox-Fruits",
-    "SHINDO LIFE": "https://www.roblox.com/games/4616652839/Shindo-Life-240",
-    # …필요 시 계속 추가…
-}
+# ── URL + 패턴만 넣으면 자동 반영 ──────────────────────
+sources_list = [
+    # PCGamesN – Blox Fruits :contentReference[oaicite:0]{index=0}
+    ("https://www.pcgamesn.com/blox-fruits/codes",
+     r"[*•]\s*([A-Za-z0-9_!]{4,40})"),
+    # Pocket Tactics – Shindo Life :contentReference[oaicite:1]{index=1}
+    ("https://www.pockettactics.com/shindo-life/codes",
+     r"[*•]\s*([A-Za-z0-9_!]{4,40})"),
+    # Beebom – Bee Swarm Simulator :contentReference[oaicite:2]{index=2}
+    ("https://beebom.com/roblox-bee-swarm-simulator-codes/",
+     r"<code>([^<\s]{4,40})</code>"),
+    # ProGameGuides – Adopt Me! :contentReference[oaicite:3]{index=3}
+    ("https://progameguides.com/roblox/roblox-adopt-me-codes/",
+     r"<strong>([^<\s]{4,40})</strong>"),
+    # Pocket Gamer – Murder Mystery 2 :contentReference[oaicite:4]{index=4}
+    ("https://www.pocketgamer.com/murder-mystery-2/codes/",
+     r"<code>([^<\s]{4,40})</code>"),
+    # Bo3.gg – Tower of Hell :contentReference[oaicite:5]{index=5}
+    ("https://bo3.gg/games/articles/tower-of-hell-codes",
+     r"<code>([^<\s]{4,40})</code>"),
+    # Pocket Tactics – Arsenal :contentReference[oaicite:6]{index=6}
+    ("https://www.pockettactics.com/arsenal/codes",
+     r"<code>([^<\s]{4,40})</code>"),
+    # Game Rant – Pet Simulator 99 (예시, 없을 수도 있음) :contentReference[oaicite:7]{index=7}
+    ("https://gamerant.com/roblox-pet-simulator-99-codes-prestons-shop-super-secret/",
+     r"<code>([^<\s]{4,40})</code>")
+    # …URL만 계속 추가하세요…
+]
 
-# ── 최대한 확장한 전문 사이트 소스맵 ───────────────────
-sources_map = {
-    "BLOX FRUITS": [
-        ("https://www.pcgamesn.com/blox-fruits/codes",       r"[*•]\s*([A-Za-z0-9_!]{4,40})"),
-        ("https://gamerant.com/blox-fruits-codes/",          r"<code>([^<\s]{4,40})</code>"),
-        ("https://www.techradar.com/how-to/blox-fruits-codes", r"<li>.*?([A-Za-z0-9_!]{4,40})")
-    ],
-    "SHINDO LIFE": [
-        ("https://www.pockettactics.com/shindo-life/codes",  r"[*•]\s*([A-Za-z0-9_!]{4,40})"),
-        ("https://beebom.com/roblox-shindo-life-codes/",     r"<code>([^<\s]{4,40})</code>")
-    ],
-    "BEE SWARM SIMULATOR": [
-        ("https://beebom.com/roblox-bee-swarm-simulator-codes/", r"<code>([^<\s]{4,40})</code>"),
-        ("https://gamerant.com/bee-swarm-simulator-codes/",      r"<code>([^<\s]{4,40})</code>")
-    ],
-    "ADOPT ME!": [
-        ("https://progameguides.com/roblox/roblox-adopt-me-codes/", r"<strong>([^<\s]{4,40})</strong>")
-    ],
-    "MURDER MYSTERY 2": [
-        ("https://www.pocketgamer.com/murder-mystery-2/codes/", r"<code>([^<\s]{4,40})</code>")
-    ],
-    "TOWER OF HELL": [
-        ("https://bo3.gg/games/articles/tower-of-hell-codes",  r"<code>([^<\s]{4,40})</code>")
-    ],
-    "ARSENAL": [
-        ("https://www.pockettactics.com/arsenal/codes",        r"<code>([^<\s]{4,40})</code>")
-    ],
-    "PET SIMULATOR X": [
-        ("https://gamerant.com/pet-simulator-x-codes/",        r"<code>([^<\s]{4,40})</code>")
-    ],
-    "MAD CITY": [
-        ("https://progameguides.com/roblox/mad-city-codes/",   r"<code>([^<\s]{4,40})</code>")
-    ],
-    # …여기에 더 많은 {게임: [(url, 패턴)]} 쌍을 자유롭게 추가…
-}
+# (선택) 한글 번역 – 없으면 영어 그대로
+kr_map = {"BLOX FRUITS":"블록스 프루츠","SHINDO LIFE":"신도 라이프"}
 
-# ── 만료표시 <del>/<strike>/expired 제거 ────────────────
-def strip_expired(html: str) -> str:
-    soup = BeautifulSoup(html, "html.parser")
-    for t in soup.find_all(["del", "strike"]):
-        t.decompose()
-    return re.sub(r"(?i)expired", "", str(soup))
+# 실행 링크 캐시
+link_cache: dict[str,str] = {}
 
-# ── 코드 클린 & 검증 ───────────────────────────────────
-def clean(raw: str) -> str:
-    s = re.sub(r"[^\w!]", "", raw).upper()
-    return s if 4 <= len(s) <= 40 else ""
+# ── 유틸 ───────────────────────────────────────────────
+def strip_expired(html:str)->str:
+    soup=BeautifulSoup(html,"html.parser")
+    [t.decompose() for t in soup.find_all(["del","strike"])]
+    return re.sub(r"(?i)expired","",str(soup))
 
-# ── 실행 링크 자동 검색(없으면) ─────────────────────────
-def fetch_link(name: str) -> str:
-    if name in link_cache:
-        return link_cache[name]
+def clean(raw:str)->str:
+    s=re.sub(r"[^\w!]","",raw).upper()
+    return s if 4<=len(s)<=40 else ""
+
+def guess_game_name(html:str,url:str)->str:
+    # 1) <title> Foo codes
+    title = BeautifulSoup(html,"html.parser").title
+    if title and "codes" in title.text.lower():
+        return title.text.split("codes")[0].strip().upper()
+    # 2) URL slug
+    slug = urllib.parse.urlparse(url).path.split("/")[1]
+    return slug.replace("-"," ").upper()
+
+def fetch_link(name:str)->str:
+    if name in link_cache: return link_cache[name]
     try:
-        q   = urllib.parse.quote_plus(name)
-        data= requests.get(SEARCH_API.format(q=q), headers=UA, timeout=10).json()
-        gid = data.get("games", [{}])[0].get("rootPlaceId")
+        q=urllib.parse.quote_plus(name)
+        data=requests.get(SEARCH_API.format(kw=q:=q),headers=UA,timeout=10).json()
+        gid=data.get("games",[{}])[0].get("rootPlaceId")
         if gid:
-            url = f"https://www.roblox.com/games/{gid}"
-            link_cache[name] = url
-            return url
-    except Exception:
-        pass
+            url=f"https://www.roblox.com/games/{gid}"
+            link_cache[name]=url; return url
+    except: pass
     return ""
 
-# ── 프로모션 코드 API 세션 ──────────────────────────────
 def promo_session():
-    cookie = os.getenv("ROBLOX_SECURITY")
-    if not cookie:
-        print("ROBLOX_SECURITY not set → promo check skipped")
-        return None
-    s = requests.Session(); s.headers.update(UA); s.cookies[".ROBLOSECURITY"] = cookie
-    token = s.post(PROMO_API, json={"code": ""}).headers.get("x-csrf-token")
-    s.headers["x-csrf-token"] = token
-    return s
+    cookie=os.getenv("ROBLOX_SECURITY")
+    if not cookie: return None
+    s=requests.Session(); s.headers.update(UA); s.cookies[".ROBLOSECURITY"]=cookie
+    token=s.post(PROMO_API,json={"code":""}).headers.get("x-csrf-token")
+    s.headers["x-csrf-token"]=token; return s
 
-def promo_valid(s: requests.Session, code: str) -> bool:
-    try:
-        return s.post(PROMO_API, json={"code": code}, timeout=10).json().get("success", False)
-    except Exception:
-        return False
+def promo_valid(s,code:str)->bool:
+    try: return s.post(PROMO_API,json={"code":code},timeout=10).json().get("success",False)
+    except: return False
 
-# ── 메인 로직 ──────────────────────────────────────────
+# ── 메인 ───────────────────────────────────────────────
 def main():
-    output, seen = [], set()
+    dedup=defaultdict(set); out=[]
+    # A) 인‑게임 코드
+    for url,pat in sources_list:
+        try:
+            html=requests.get(url,headers=UA,timeout=15).text
+            game=guess_game_name(html,url)
+            for raw in re.findall(pat,strip_expired(html),flags=re.I):
+                code=clean(raw)
+                if code and code not in dedup[game]:
+                    dedup[game].add(code)
+        except Exception as e:
+            print(f"[{url}] ERR {e}")
 
-    # A) 인‑게임 코드: 모든 게임 순회
-    for eng, srcs in sources_map.items():
-        raw = []
-        for url, pat in srcs:
-            try:
-                html = strip_expired(requests.get(url, headers=UA, timeout=15).text)
-                raw += re.findall(pat, html, flags=re.I)
-            except Exception as e:
-                print(f"[{eng}] fetch ERR: {e}")
+    for game,codes in dedup.items():
+        kor=kr_map.get(game,game)
+        link=fetch_link(game)
+        for c in sorted(codes):
+            out.append({"game":f"{kor} ({game})","code":c,
+                        "type":"in‑game","url":link,"verified":TODAY})
 
-        valids = [c for c in map(clean, raw) if c and c not in seen]
-        if not valids:
-            continue
-        seen.update(valids)
-
-        kor  = kr_name.get(eng, eng)
-        link = fetch_link(eng)
-        for code in valids:
-            output.append({
-                "game":     f"{kor} ({eng})",
-                "code":     code,
-                "type":     "in-game",
-                "url":      link,
-                "verified": TODAY
-            })
-
-    # B) 일반 프로모 코드(API 검증)
-    promo_list = ["SPIDERCOLA", "TWEETROBLOX", "SUMMERSALE2025"]
-    sess = promo_session()
+    # B) 프로모 코드
+    sess=promo_session(); promo=["SPIDERCOLA","TWEETROBLOX","SUMMERSALE2025"]
     if sess:
-        for code in promo_list:
-            if code not in seen and promo_valid(sess, code):
-                output.append({
-                    "game": "로블록스 프로모션",
-                    "code": code,
-                    "type": "promo",
-                    "url":  "https://www.roblox.com/promocodes",
-                    "verified": TODAY
-                })
-                seen.add(code)
+        for p in promo:
+            if promo_valid(sess,p):
+                out.append({"game":"로블록스 프로모션","code":p,
+                            "type":"promo","url":"https://www.roblox.com/promocodes",
+                            "verified":TODAY})
 
-    # C) JSON 저장
-    output.sort(key=lambda x: (x["game"], x["code"]))
-    pathlib.Path("coupons.json").write_text(
-        json.dumps(output, ensure_ascii=False, indent=2),
-        encoding="utf-8"
-    )
-    print(f"✅ Saved {len(output)} unique coupons")
+    out.sort(key=lambda x:(x["game"],x["code"]))
+    pathlib.Path("coupons.json").write_text(json.dumps(out,ensure_ascii=False,indent=2),encoding="utf-8")
+    build_widget(out)
+    print("✅ Saved",len(out),"unique coupons")
 
-if __name__ == "__main__":
-    main()
+# 위젯 HTML (T스토리용)
+def build_widget(data):
+    rows="\n".join(f"<tr><td>{d['game']}</td><td><code>{d['code']}</code></td>"
+                   f"<td><a href='{d['url']}' target='_blank'>실행</a></td></tr>"
+                   for d in data)
+    html=f"""<!doctype html><html><meta charset=utf-8><title>Roblox 쿠폰</title>
+<style>body{{font-family:'Noto Sans KR',sans-serif}}table{{width:100%;border-collapse:collapse}}
+th,td{{border:1px solid #ccc;padding:6px}}th{{background:#f4f4f4}}</style>
+<h2>🎁 Roblox 무료 쿠폰({TODAY})</h2>
+<input onkeyup="f(this.value)" placeholder="게임/코드 검색…" style="width:100%;padding:6px">
+<table id=t><thead><tr><th>게임</th><th>쿠폰</th><th>실행</th></tr></thead><tbody>{rows}</tbody></table>
+<script>function f(q){{q=q.toLowerCase();for(const r of t.tBodies[0].rows)r.style.display=r.textContent.toLowerCase().includes(q)?'':'none';}}</script></html>"""
+    pathlib.Path("widget.html").write_text(html,encoding="utf-8")
+
+if __name__=="__main__": main()
