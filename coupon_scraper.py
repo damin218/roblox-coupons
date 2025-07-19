@@ -1,74 +1,80 @@
 #!/usr/bin/env python3
-# coupon_scraper.py ― 유효 쿠폰이 있는 게임만 리스트업
+# coupon_scraper.py ― 구조 변경에 강건한 쿠폰 수집기
 
 import re, json, html, datetime, pathlib, requests
 from bs4 import BeautifulSoup
 
+# ── 설정 ─────────────────────────────────────────────
 UA    = {"User-Agent":"Mozilla/5.0"}
 TODAY = datetime.date.today().isoformat()
 
-# ── 1) 게임별 전문 사이트 & 정규식 맵 ───────────────────
-#    필요하면 여기에 추가하세요.
+# ── 1) 사이트별 URL 목록 ─────────────────────────────────
+#    여기에 쿠폰 페이지 URL만 추가해 주세요.
+#    (게임명은 결과 정렬용, key 순서대로 반복)
 sources_map = {
   "Blox Fruits": [
-    ("https://www.pcgamesn.com/blox-fruits/codes",
-     r"\*\s+([A-Za-z0-9_!]{5,20})\s+-"),
-    ("https://gamerant.com/blox-fruits-codes/",
-     r"<code>([^<\s]{5,20})</code>"),
+    "https://www.pcgamesn.com/blox-fruits/codes",
+    "https://gamerant.com/blox-fruits-codes/"
   ],
   "Shindo Life": [
-    ("https://www.pockettactics.com/shindo-life/codes",
-     r"\*\s+([A-Za-z0-9_!]{5,20})\s+-"),
+    "https://www.pockettactics.com/shindo-life/codes"
   ],
   "Bee Swarm Simulator": [
-    ("https://beebom.com/roblox-bee-swarm-simulator-codes/",
-     r"\*\s+([A-Za-z0-9_!]{4,30})[:\s-]"),
+    "https://beebom.com/roblox-bee-swarm-simulator-codes/"
   ],
-  # … 여기에 인기 게임별 코드 페이지를 계속 추가 …
+  # … 추가하고 싶은 게임 페이지 URL 계속 …
 }
 
-# ── HTML 내 <del>, strike, “Expired” 제거 ───────────────
+# ── HTML 내 만료 표시 제거 ────────────────────────────
 def strip_expired(html_txt: str) -> str:
     soup = BeautifulSoup(html_txt, "html.parser")
-    # 지워버릴 태그
     for t in soup.find_all(["del","strike"]):
         t.decompose()
-    # “expired” 단어 제거
     return re.sub(r"(?i)expired","", str(soup))
 
-# ── 코드 클린업 & 유효성 검사 ─────────────────────────────
+# ── 텍스트에서 쿠폰 후보 모두 뽑아내기 ───────────────────
+COUPON_RE = re.compile(r"\b[A-Z0-9!]{4,20}\b")
+def extract_codes_from(html_txt: str) -> list[str]:
+    # 1) 만료 태그 제거
+    clean_html = strip_expired(html_txt)
+    # 2) 모든 텍스트로 변환
+    text = BeautifulSoup(clean_html, "html.parser").get_text(separator=" ")
+    # 3) 대문자+숫자 패턴으로 후보 추출
+    return COUPON_RE.findall(text)
+
+# ── 개별 문자열 정리 & 유효성 검사 ─────────────────────
 def clean(raw: str) -> str:
-    txt  = html.unescape(raw).strip().upper()
-    code = re.sub(r"[^\w!]","", txt)
-    # 코드 길이 및 첫글자 알파벳 조건
-    return code if 5 <= len(code) <= 20 and code[0].isalpha() else ""
+    s    = html.unescape(raw).strip().upper()
+    code = re.sub(r"[^\w!]","", s)
+    # 4~20자, 첫글자 알파벳 조건
+    return code if 4 <= len(code) <= 20 and code[0].isalpha() else ""
 
 # ── 기존 coupons.json 로드 ───────────────────────────
-def load_old() -> list:
+def load_old() -> list[dict]:
     try:
         return json.load(open("coupons.json", encoding="utf-8"))
     except FileNotFoundError:
         return []
 
-# ── 메인 루프 ─────────────────────────────────────────
+# ── 메인 ─────────────────────────────────────────────
 def main():
-    old     = load_old()
-    seen    = {c["code"] for c in old}
-    results = []
+    old   = load_old()
+    seen  = {c["code"] for c in old}
+    out   = []
 
-    for game, sources in sources_map.items():
+    for game, urls in sources_map.items():
         raw_codes = []
-        for url, pattern in sources:
+        for url in urls:
             try:
                 resp = requests.get(url, headers=UA, timeout=15)
-                txt  = strip_expired(resp.text)
-                found = re.findall(pattern, txt, flags=re.I)
-                print(f"[{game}] {url} → found {len(found)} raw")
+                resp.raise_for_status()
+                found = extract_codes_from(resp.text)
+                print(f"[{game}] {url} → found {len(found)} raw candidates")
                 raw_codes += found
             except Exception as e:
                 print(f"[{game}] ERROR fetching {url}: {e}")
 
-        # clean & dedupe
+        # 정리 & 중복 제거
         valid = []
         for r in raw_codes:
             c = clean(r)
@@ -76,26 +82,26 @@ def main():
                 valid.append(c)
                 seen.add(c)
 
-        # 유효 코드가 한 개라도 있을 때만 결과에 포함
+        # 유효 코드가 있으면 결과에 추가
         if valid:
-            for code in sorted(valid):
-                results.append({
-                    "game":      game,
-                    "code":      code,
-                    "expires":   None,      # 필요 시 여기에 만료일 문자열 입력
-                    "verified":  TODAY
+            for code in sorted(set(valid)):
+                out.append({
+                    "game":     game,
+                    "code":     code,
+                    "expires":  None,
+                    "verified": TODAY
                 })
             print(f"[{game}] → {len(valid)} valid codes, included.")
         else:
             print(f"[{game}] → no valid codes, skipped.")
 
-    # 정렬·저장
-    results.sort(key=lambda x: (x["game"].upper(), x["code"]))
+    # 결과 저장
+    out.sort(key=lambda x:(x["game"].upper(), x["code"]))
     pathlib.Path("coupons.json").write_text(
-        json.dumps(results, ensure_ascii=False, indent=2),
+        json.dumps(out, ensure_ascii=False, indent=2),
         encoding="utf-8"
     )
-    print(f"✅ Finished. {len(results)} codes across {len({r['game'] for r in results})} games.")
+    print(f"✅ Finished. {len(out)} codes across {len({r['game'] for r in out})} games.")
 
-if __name__ == "__main__":
+if __name__=="__main__":
     main()
