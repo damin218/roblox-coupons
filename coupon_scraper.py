@@ -1,32 +1,48 @@
+#!/usr/bin/env python3
+# coupon_scraper.py ― Roblox 인기 게임 쿠폰 수집 + 디버그 & Fallback
 """
-coupon_scraper.py – ‘실사용 가능’ Roblox 쿠폰 전용 스크레이퍼
-─────────────────────────────────────────────────────────────
-▲ 신뢰 소스 12 게임 (필요 시 sources_map 에 추가)
-▲ HTML 안에 <del>, <strike>, ‘Expired’ 가 붙은 코드 자동 제거
-▲ 글로벌 Roblox PromoCode 는 공식 API 로 이중 검증
-▲ 각 코드에 verified(검증일) 필드 추가
+1. sources_map 에 정의된 신뢰 사이트에서 쿠폰 수집
+2. 수집 결과가 없으면 Google 동적 검색(<code> 태그)으로 보충
+3. HTML 내 <del>, <strike>, 'Expired' 제거
+4. 코드 클린업(clean): 길이·문자 검증
+5. 중복 제거(seen), debug print
+6. 결과를 coupons.json 에 저장
 """
 
-import re, json, html, datetime, pathlib, requests
+import re
+import json
+import html
+import datetime
+import pathlib
+import urllib.parse
+import requests
 from bs4 import BeautifulSoup
 
 # ── 설정 ────────────────────────────────────────────────
-UA  = {"User-Agent": "Mozilla/5.0"}
-DAY = datetime.date.today().isoformat()
+UA = {"User-Agent": "Mozilla/5.0"}
+TODAY = datetime.date.today().isoformat()
 
-# 1️⃣ 쿠폰 ‘문화’가 있는 인기 게임 & 소스
+# ── 1. 신뢰 사이트 매핑: 게임 이름 → [(URL, 패턴), …]
 sources_map = {
     "Blox Fruits": [
         ("https://www.pcgamesn.com/blox-fruits/codes",
-         r"\*\s+([A-Za-z0-9_!]{5,20})\s+-")
+         r"\*\s+([A-Za-z0-9_!]{5,20})\s+-"),
+        ("https://gamerant.com/blox-fruits-codes/",
+         r"<code>([^<\s]{5,20})</code>"),
+        ("https://twinfinite.net/2025/07/blox-fruits-roblox-codes/",
+         r"<li>\s*<strong>([^<\s]{5,20})</strong>")
     ],
     "Shindo Life": [
         ("https://www.pockettactics.com/shindo-life/codes",
-         r"\*\s+([A-Za-z0-9_!]{5,20})\s+-")
+         r"\*\s+([A-Za-z0-9_!]{5,20})\s+-"),
+        ("https://beebom.com/roblox-shindo-life-codes/",
+         r"<code>([^<\s]{5,20})</code>"),
+        ("https://www.gamespot.com/articles/shindo-life-codes/",
+         r"<code>([^<\s]{5,20})</code>")
     ],
     "Bee Swarm Simulator": [
         ("https://beebom.com/roblox-bee-swarm-simulator-codes/",
-         r"\*\s+([A-Za-z0-9_!]{5,20})[:\s-]")
+         r"\*\s+([A-Za-z0-9_!]{5,20})[:\s-]"),
     ],
     "Blade Ball": [
         ("https://beebom.com/roblox-blade-ball-codes/",
@@ -34,6 +50,8 @@ sources_map = {
     ],
     "Anime Champions Simulator": [
         ("https://beebom.com/roblox-anime-champions-simulator-codes/",
+         r"<strong>([^<\s]{5,20})</strong>"),
+        ("https://www.destructoid.com/anime-champions-simulator-codes/",
          r"<strong>([^<\s]{5,20})</strong>")
     ],
     "King Legacy": [
@@ -42,7 +60,9 @@ sources_map = {
     ],
     "Project Slayers": [
         ("https://www.pockettactics.com/project-slayers/codes",
-         r"\*\s+([A-Za-z0-9_!]{5,20})\s+-")
+         r"\*\s+([A-Za-z0-9_!]{5,20})\s+-"),
+        ("https://gamerant.com/project-slayers-roblox-codes/",
+         r"<code>([^<\s]{5,20})</code>")
     ],
     "All Star Tower Defense": [
         ("https://www.pockettactics.com/all-star-tower-defense/codes",
@@ -52,73 +72,102 @@ sources_map = {
         ("https://beebom.com/blue-lock-rivals-codes/",
          r"<code>([^<\s]{5,20})</code>")
     ],
-    # ★ 필요 시 이곳에 ("게임 이름":[(URL, 정규식), ...]) 추가
+    "Pet Simulator 99": [
+        ("https://beebom.com/roblox-pet-simulator-99-codes/",
+         r"<strong>([^<\s]{5,20})</strong>")
+    ],
+    "Weapon Fighting Simulator": [
+        ("https://www.pockettactics.com/weapon-fighting-simulator/codes",
+         r"\*\s+([A-Za-z0-9_!]{5,20})\s+-")
+    ],
+    "Anime Fighters Simulator": [
+        ("https://www.pockettactics.com/anime-fighters-simulator/codes",
+         r"\*\s+([A-Za-z0-9_!]{5,20})\s+-")
+    ],
+    # 더 추가하고 싶으면 여기 ↓
 }
 
-# 2️⃣ 유효 코드 규칙
+# ── 2. HTML 내 만료 표시 제거 (del, strike, 'Expired') ──
+def strip_expired(html_text: str) -> str:
+    soup = BeautifulSoup(html_text, "html.parser")
+    for tag in soup.find_all(["del", "strike"]):
+        tag.decompose()
+    txt = str(soup)
+    return re.sub(r"(?i)expired", "", txt)
+
+# ── 3. 문자열 정리 & 유효성 검사 ────────────────────────
 def clean(raw: str) -> str:
-    code = re.sub(r"[^\w!]", "", html.unescape(raw).strip().upper())
-    return code if (5 <= len(code) <= 20 and code[0].isalpha()) else ""
+    s = html.unescape(raw).strip().upper()
+    code = re.sub(r"[^\w!]", "", s)
+    # 길이 5~20, 첫글자 영문자
+    if 5 <= len(code) <= 20 and code[0].isalpha():
+        return code
+    return ""
 
-# 3️⃣ HTML 내 ‘만료’ 코드 제거
-def strip_expired(raw_html: str) -> str:
-    soup = BeautifulSoup(raw_html, "html.parser")
-    for bad in soup.find_all(["del", "strike"]):
-        bad.decompose()
-    return re.sub(r"(?i)expired", "", str(soup))
-
-# 4️⃣ Roblox 공식 PromoCode API (글로벌 코드만 해당)
-def api_valid(code: str) -> bool:
-    url = "https://economy.roblox.com/v1/promocodes/redeem"
+# ── 4. Google Fallback: 게임명 + "codes" 검색 → <code> 태그 파싱 ──
+def google_codes(game: str) -> list[str]:
+    query = urllib.parse.quote_plus(f"{game} codes")
+    url = f"https://www.google.com/search?q={query}&num=5&hl=en"
     try:
-        res = requests.post(url, json={"promocode": code}, timeout=10)
-        bad = ("invalid", "expired", "already", "code has")
-        return not any(b in res.text.lower() for b in bad)
-    except requests.RequestException:
-        return True   # 네트워크 오류 → 통과로 간주
+        resp = requests.get(url, headers=UA, timeout=15)
+        links = re.findall(r"/url\?q=(https://[^&]+)", resp.text)
+    except Exception:
+        return []
+    codes = []
+    for link in links[:3]:
+        link = urllib.parse.unquote(link)
+        try:
+            p = requests.get(link, headers=UA, timeout=15).text
+            p = html.unescape(p)
+            codes += re.findall(r"<code>([^<\s]{5,20})</code>", p, flags=re.I)
+        except Exception:
+            continue
+    return codes
 
-# 5️⃣ 기존 JSON 불러오기
+# ── 5. 이전 JSON 로드 ───────────────────────────────────
 def load_old() -> list[dict]:
     try:
-        with open("coupons.json", encoding="utf-8") as f:
-            return json.load(f)
+        return json.load(open("coupons.json", encoding="utf-8"))
     except FileNotFoundError:
         return []
 
-# 6️⃣ 메인
+# ── 6. 메인 ─────────────────────────────────────────────
 def main():
     old = load_old()
-    seen = {c["code"] for c in old}     # ← dict 대신 code만 set으로 관리
-    final = []
+    seen = {c["code"] for c in old}
+    result = []
 
-    for game, srcs in sources_map.items():
-        for url, pattern in srcs:
+    for game, sources in sources_map.items():
+        collected = []
+        for url, pattern in sources:
             try:
-                html_txt = requests.get(url, headers=UA, timeout=25).text
-                html_txt = strip_expired(html_txt)
+                txt = requests.get(url, headers=UA, timeout=20).text
+                txt = strip_expired(txt)
             except Exception as e:
-                print("⚠️ Fetch fail:", game, e)
+                print(f"[{game}] ❌ fetch fail: {e}")
                 continue
 
-            for raw in re.findall(pattern, html_txt, re.I):
-                code = clean(raw)
-                if not code or code in seen:
-                    continue
+            found = re.findall(pattern, txt, flags=re.I)
+            print(f"[{game}] {url} → found {len(found)} raw codes")
+            collected += found
 
-                # 글로벌 프로모코드는 API 추가 검증
-                if game == "Roblox Promo" and not api_valid(code):
-                    print("🗑️ Promo expired:", code)
-                    continue
+        # sources_map에 전부 실패했으면 Google Fallback
+        if not collected:
+            print(f"[{game}] ⚠️ no codes found, trying Google fallback")
+            collected = google_codes(game)
 
-                final.append({"game": game, "code": code, "verified": DAY})
-                seen.add(code)
+        for raw in collected:
+            code = clean(raw)
+            if not code or code in seen:
+                continue
+            result.append({"game": game, "code": code, "verified": TODAY})
+            seen.add(code)
 
-    # 최종 저장
-    final.sort(key=lambda x: (x["game"], x["code"]))
+    # 정렬·저장
+    result.sort(key=lambda x: (x["game"], x["code"]))
     pathlib.Path("coupons.json").write_text(
-        json.dumps(final, ensure_ascii=False, indent=2),
-        encoding="utf-8")
-    print(f"✅ {len(final)} codes saved across {len({c['game'] for c in final})} games")
+        json.dumps(result, ensure_ascii=False, indent=2), encoding="utf-8")
+    print(f"✅ Total: {len(result)} codes across {len({r['game'] for r in result})} games")
 
 if __name__ == "__main__":
     main()
