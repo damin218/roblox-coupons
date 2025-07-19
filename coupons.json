@@ -1,9 +1,37 @@
 [
   {
-    "game": "General Promo",
-    "code": "SPIDERCOLA",
-    "type": "promo",
-    "expires": "2025-07-19",
+    "game": "덕 아미 (DUCK ARMY)",
+    "code": "LAUNCH",
+    "type": "in-game",
+    "expires": null,
+    "verified": "2025-07-19"
+  },
+  {
+    "game": "덕 아미 (DUCK ARMY)",
+    "code": "SELECT",
+    "type": "in-game",
+    "expires": null,
+    "verified": "2025-07-19"
+  },
+  {
+    "game": "몽키 타이쿤 (MONKEY TYCOON)",
+    "code": "CLICK",
+    "type": "in-game",
+    "expires": null,
+    "verified": "2025-07-19"
+  },
+  {
+    "game": "몽키 타이쿤 (MONKEY TYCOON)",
+    "code": "ENTER",
+    "type": "in-game",
+    "expires": null,
+    "verified": "2025-07-19"
+  },
+  {
+    "game": "몽키 타이쿤 (MONKEY TYCOON)",
+    "code": "OPEN",
+    "type": "in-game",
+    "expires": null,
     "verified": "2025-07-19"
   }
 ]
