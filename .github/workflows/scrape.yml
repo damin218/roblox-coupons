@@ -1,33 +1,32 @@
-name: Update Coupons
+name: Update coupons.json
 
-# 수동 실행과 매일 새벽 4시(UTC 기준 04:00 → KST 13:00) 스케줄링
 on:
-  workflow_dispatch:
+  workflow_dispatch:      # GitHub 웹 UI에서 수동 실행용
   schedule:
-    - cron: '0 4 * * *'
+    - cron: '0 4 * * *'   # 매일 04:00 UTC (KST 13:00)
 
 jobs:
   scrape:
     runs-on: ubuntu-latest
-    # GitHub Secret을 환경 변수로 주입
     env:
-      ROBLOX_SECURITY: ${{ secrets.ROBLOX_SECURITY }}
+      ROBLOX_SECURITY: ${{ secrets.ROBLOX_SECURITY }}  # .ROBLOSECURITY 쿠키
 
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout repo
+        uses: actions/checkout@v4
 
       - name: Setup Python
         uses: actions/setup-python@v5
         with:
           python-version: '3.x'
 
-      - name: Install Dependencies
-        run: pip install requests bs4
+      - name: Install deps
+        run: pip install requests beautifulsoup4
 
-      - name: Run Coupon Scraper
+      - name: Run scraper
         run: python coupon_scraper.py
 
-      - name: Commit & Push Updated JSON
+      - name: Commit & push updated JSON
         uses: stefanzweifel/git-auto-commit-action@v5
         with:
-          commit_message: "🤖 Update coupons.json"
+          commit_message: "🤖 update coupons.json"
