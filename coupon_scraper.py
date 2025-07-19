@@ -10,46 +10,31 @@ import requests
 from bs4 import BeautifulSoup
 
 # ── 설정 ─────────────────────────────────────────────
-TODAY       = datetime.date.today().isoformat()
-REDEEM_URL  = "https://billing.roblox.com/v1/promocodes/redeem"
-HEADERS     = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"}
+TODAY      = datetime.date.today().isoformat()
+REDEEM_URL = "https://billing.roblox.com/v1/promocodes/redeem"
+HEADERS    = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"}
 
-# ── 1) 문자열 정리 함수 ───────────────────────────────
-def clean(raw: str) -> str:
-    code = re.sub(r"[^\w!]", "", raw.strip().upper())
-    return code if len(code) >= 4 else ""
+# ── 1) 영어→한글 게임명 매핑 ───────────────────────────
+game_name_map = {
+    "BLOX FRUITS":         "블록스 프루츠",
+    "SHINDO LIFE":         "신도 라이프",
+    "BEE SWARM SIMULATOR": "비 스웜 시뮬레이터",
+    "ADOPT ME!":           "어답트 미!",
+    "MURDER MYSTERY 2":    "머더 미스터리 2",
+    "TOWER OF HELL":       "타워 오브 헬",
+    "ARSENAL":             "아스널",
+    "PET SIMULATOR X":     "펫 시뮬레이터 X",
+    "MAD CITY":            "매드 시티",
+    "DRESS TO IMPRESS":    "드레스 투 임프레스",
+    "BROOKHAVEN":          "브룩헤이븐",
+    "JAILBREAK":           "제일브레이크",
+    "CAPYBARA EVOLUTION":  "카피바라 이볼루션",
+    "DUCK ARMY":           "덕 아미",
+    "MONKEY TYCOON":       "몽키 타이쿤",
+    # …원하는 만큼 추가…
+}
 
-# ── 2) Roblox 일반 프로모션 코드용 세션 생성 ──────────
-def create_redeem_session() -> requests.Session:
-    cookie = os.getenv("ROBLOX_SECURITY")
-    if not cookie:
-        raise RuntimeError("Environment variable ROBLOX_SECURITY is not set.")
-    sess = requests.Session()
-    sess.headers.update(HEADERS)
-    sess.cookies[".ROBLOSECURITY"] = cookie
-
-    # 첫 호출로 CSRF 토큰 획득 (의도적 403)
-    init = sess.post(REDEEM_URL, json={"code": ""})
-    token = init.headers.get("x-csrf-token")
-    if not token:
-        raise RuntimeError("Failed to obtain X-CSRF-TOKEN. Check your .ROBLOSECURITY value.")
-    sess.headers.update({"x-csrf-token": token})
-    return sess
-
-def validate_promo_code(sess: requests.Session, code: str) -> bool:
-    """
-    실제로 redeem API를 호출해봅니다.
-    성공(success=true)이면 True, 아니면 False를 반환.
-    *주의* 이 호출은 실제로 계정에 리워드를 지급합니다.
-    """
-    try:
-        resp = sess.post(REDEEM_URL, json={"code": code}, timeout=10)
-        data = resp.json()
-        return data.get("success", False)
-    except Exception:
-        return False
-
-# ── 3) 인게임 쿠폰 스크래핑용 소스맵 ───────────────────
+# ── 2) 전문 사이트 쿠폰 소스맵 ─────────────────────────
 sources_map = {
     "BLOX FRUITS": [
         ("https://www.pcgamesn.com/blox-fruits/codes",
@@ -60,88 +45,152 @@ sources_map = {
     "SHINDO LIFE": [
         ("https://www.pockettactics.com/shindo-life/codes",
          r"\*\s+([A-Za-z0-9_!]{4,40})\s+-"),
-        ("https://beebom.com/roblox-shindo-life-codes/",
+        ("https://gamerant.com/shindo-life-codes/",
          r"<code>([^<\s]{4,40})</code>")
     ],
     "BEE SWARM SIMULATOR": [
         ("https://beebom.com/roblox-bee-swarm-simulator-codes/",
-         r"\*\s+([A-Za-z0-9_!]{4,40})[:\s-]")
+         r"<code>([^<\s]{4,40})</code>")
     ],
-    # 필요하면 여기에 추가 게임·URL·정규식 계속 덧붙이세요
+    "ADOPT ME!": [
+        ("https://progameguides.com/roblox/roblox-adopt-me-codes/",
+         r"<li>\s*([A-Za-z0-9_!]{4,40})—")
+    ],
+    "MURDER MYSTERY 2": [
+        ("https://www.pocketgamer.com/murder-mystery-2/codes/",
+         r"<code>([^<\s]{4,40})</code>")
+    ],
+    "TOWER OF HELL": [
+        ("https://bo3.gg/games/articles/tower-of-hell-codes",
+         r"<code>([^<\s]{4,40})</code>")
+    ],
+    "ARSENAL": [
+        ("https://www.pockettactics.com/arsenal/codes",
+         r"<code>([^<\s]{4,40})</code>"),
+        ("https://robloxarsenal.fandom.com/wiki/Codes",
+         r"<code>([^<\s]{4,40})</code>")
+    ],
+    "PET SIMULATOR X": [
+        ("https://www.pockettactics.com/pet-simulator-x/codes",
+         r"<code>([^<\s]{4,40})</code>")
+    ],
+    "MAD CITY": [
+        ("https://www.pocketgamer.com/roblox/mad-city-codes/",
+         r"<code>([^<\s]{4,40})</code>")
+    ],
+    "DRESS TO IMPRESS": [
+        ("https://progameguides.com/roblox/dress-to-impress-codes/",
+         r"<code>([^<\s]{4,40})</code>")
+    ],
+    "BROOKHAVEN": [
+        ("https://progameguides.com/roblox/brookhaven-codes/",
+         r"<code>([^<\s]{4,40})</code>")
+    ],
+    "JAILBREAK": [
+        ("https://progameguides.com/roblox/jailbreak-codes/",
+         r"<code>([^<\s]{4,40})</code>")
+    ],
+    "CAPYBARA EVOLUTION": [
+        ("https://beebom.com/capybara-evolution-codes/",
+         r"<code>([^<\s]{4,40})</code>")
+    ],
+    "DUCK ARMY": [
+        ("https://beebom.com/duck-army-codes/",
+         r"<li>\s*([A-Za-z0-9_!]{4,40})[:\s]")
+    ],
+    "MONKEY TYCOON": [
+        ("https://beebom.com/roblox-monkey-tycoon-codes/",
+         r"<li>\s*([A-Za-z0-9_!]{4,40})[:\s]")
+    ],
+    # …더 많은 게임·URL 추가 가능…
 }
 
-# ── 4) HTML 내 만료 표시(<del>, <strike>, “Expired”) 제거 ──
+# ── 3) HTML 내 만료 표시 제거 ─────────────────────────────
 def strip_expired(html_txt: str) -> str:
     soup = BeautifulSoup(html_txt, "html.parser")
     for tag in soup.find_all(["del", "strike"]):
         tag.decompose()
     return re.sub(r"(?i)expired", "", str(soup))
 
-# ── 5) 인게임 코드 스크래핑 ─────────────────────────────
-def scrape_game_codes() -> dict[str, list[str]]:
-    all_codes = {}
-    for game, sources in sources_map.items():
+# ── 4) 인게임 코드 스크래핑 ─────────────────────────────
+def scrape_game_codes() -> dict:
+    results = {}
+    for eng, sources in sources_map.items():
         raw = []
         for url, pat in sources:
             try:
-                html_txt = strip_expired(requests.get(url, headers=HEADERS, timeout=15).text)
-                found = re.findall(pat, html_txt, flags=re.I)
-                print(f"[{game}] {url} → raw candidates: {len(found)}")
+                txt = strip_expired(requests.get(url, headers=HEADERS, timeout=15).text)
+                found = re.findall(pat, txt, flags=re.I)
+                print(f"[{eng}] {url} → raw: {len(found)}")
                 raw += found
             except Exception as e:
-                print(f"[{game}] ERROR fetching {url}: {e}")
-        # clean & dedupe
-        valid = sorted({clean(r) for r in raw if clean(r)})
+                print(f"[{eng}] ERR fetching {url}: {e}")
+        valid = sorted({c.strip().upper() for c in raw if 4 <= len(c.strip()) <= 40})
         if valid:
-            print(f"[{game}] → valid codes: {len(valid)}")
-            all_codes[game] = valid
-        else:
-            print(f"[{game}] → no valid codes found")
-    return all_codes
+            results[eng] = valid
+            print(f"[{eng}] → valid: {len(valid)}")
+    return results
 
-# ── 6) 메인 로직 ───────────────────────────────────────
+# ── 5) 일반 프로모 코드 검증 ─────────────────────────────
+def create_redeem_session() -> requests.Session:
+    cookie = os.getenv("ROBLOX_SECURITY")
+    if not cookie:
+        raise RuntimeError("Environment variable ROBLOX_SECURITY is not set.")
+    sess = requests.Session()
+    sess.headers.update(HEADERS)
+    sess.cookies[".ROBLOSECURITY"] = cookie
+    init = sess.post(REDEEM_URL, json={"code": ""}, timeout=10)
+    token = init.headers.get("x-csrf-token")
+    if not token:
+        raise RuntimeError("Failed to obtain X-CSRF-TOKEN.")
+    sess.headers.update({"x-csrf-token": token})
+    return sess
+
+def validate_promo(sess: requests.Session, code: str) -> bool:
+    try:
+        data = sess.post(REDEEM_URL, json={"code": code}, timeout=10).json()
+        return data.get("success", False)
+    except Exception:
+        return False
+
+# ── 6) 메인 ─────────────────────────────────────────────
 def main():
-    # A) 인게임 코드 먼저 스크래핑
-    game_codes = scrape_game_codes()
-
-    # B) 일반 프로모션 코드 검증
-    session     = create_redeem_session()
-    promo_list  = ["SPIDERCOLA", "TWEETROBLOX", "SUMMERSALE2025"]
-    promo_valid = []
-    for code in promo_list:
-        ok = validate_promo_code(session, code)
-        print(f"[Promo] {code} → {'VALID' if ok else 'INVALID'}")
-        if ok:
-            promo_valid.append(code)
-
-    # C) 결과 합치기 & 저장
     output = []
-    for game, codes in game_codes.items():
+
+    # A) 스크래핑된 인게임 코드
+    game_codes = scrape_game_codes()
+    for eng, codes in game_codes.items():
+        kor = game_name_map.get(eng, eng)
         for c in codes:
             output.append({
-                "game":     game,
-                "code":     c,
-                "type":     "in-game",
-                "expires":  None,
+                "game": f"{kor} ({eng})",
+                "code": c,
+                "type": "in-game",
+                "expires": None,
                 "verified": TODAY
             })
-    for c in promo_valid:
-        output.append({
-            "game":     "General Promo",
-            "code":     c,
-            "type":     "promo",
-            "expires":  TODAY,
-            "verified": TODAY
-        })
 
-    # 정렬·파일 쓰기
+    # B) 일반 프로모션 코드 검증 (예시)
+    sess = create_redeem_session()
+    for code in ["SPIDERCOLA", "TWEETROBLOX", "SUMMERSALE2025"]:
+        valid = validate_promo(sess, code)
+        print(f"[Promo] {code} → {'VALID' if valid else 'INVALID'}")
+        if valid:
+            output.append({
+                "game": "로블록스 프로모션",
+                "code": code,
+                "type": "promo",
+                "expires": TODAY,
+                "verified": TODAY
+            })
+
+    # C) 저장
     output.sort(key=lambda x: (x["game"], x["code"]))
     pathlib.Path("coupons.json").write_text(
         json.dumps(output, ensure_ascii=False, indent=2),
         encoding="utf-8"
     )
-    print(f"✅ Saved {len(output)} total coupons "
-          f"({len(game_codes)} games + {len(promo_valid)} promos)")
+    print(f"✅ Total: {len(output)} coupons across {len(game_codes)} games + promos")
 
 if __name__ == "__main__":
     main()
