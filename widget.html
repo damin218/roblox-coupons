@@ -5,119 +5,47 @@
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Roblox Coupons Widget</title>
 <style>
-/* ───── 기본 스타일 ───── */
-body{
-  margin:0;
-  font-family:system-ui,Apple SD Gothic Neo,sans-serif;
-  line-height:1.5;
-  padding:16px;
-}
-#search{
-  width:100%;
-  max-width:360px;
-  padding:8px;
-  font-size:1rem;
-  margin-bottom:12px;
-  border:1px solid #bbb;
-  border-radius:6px;
-}
-.game{
-  margin:20px 0 6px;
-  font-weight:700;
-  font-size:1.1rem;
-}
-ul{
-  padding:0;
-  margin:0;
-  list-style:none;
-  display:flex;
-  flex-wrap:wrap;
-  gap:6px;
-}
-li{
-  background:#f8f8f8;
-  border:1px solid #ddd;
-  border-radius:6px;
-  padding:5px 8px;
-  cursor:pointer;
-  transition:.2s;
-}
-li:hover{background:#eaeaea}
-.copied{
-  background:#d5f9d9 !important;
-  border-color:#81ca86 !important;
-}
+body{margin:0;font-family:system-ui,Apple SD Gothic Neo,sans-serif;line-height:1.5;padding:16px}
+#search{width:100%;max-width:360px;padding:8px;font-size:1rem;margin-bottom:12px;border:1px solid #bbb;border-radius:6px}
+.game{margin:20px 0 6px;font-weight:700;font-size:1.1rem}
+ul{padding:0;margin:0;list-style:none;display:flex;flex-wrap:wrap;gap:6px}
+li{background:#f8f8f8;border:1px solid #ddd;border-radius:6px;padding:5px 8px;cursor:pointer;transition:.2s}
+li:hover{background:#eaeaea}.copied{background:#d5f9d9!important;border-color:#81ca86!important}
 </style>
-</head>
-<body>
+</head><body>
 
 <input id="search" placeholder="게임 이름을 입력…" />
 <div id="root">로딩 중…</div>
 
 <script>
-/* ───── 설정 ───── */
-const DATA_URL = "./coupons.json";   // 같은 GitHub Pages origin
+const DATA_URL = "./coupons.json";      /* ← 반드시 상대경로 */
 const REFRESH_HOURS = 6;
 
-/* ───── 데이터 가져오기 ───── */
 fetch(DATA_URL,{cache:"reload"})
   .then(r=>r.json())
-  .then(json=>{
-    window.coupons = json;
-    render("");
-  })
-  .catch(err=>{
-    console.error(err);
-    document.getElementById("root").textContent="쿠폰 데이터를 불러오지 못했습니다.";
-  });
+  .then(j=>{window.coupons=j;render("")})
+  .catch(e=>{console.error(e);document.getElementById("root").textContent="쿠폰 데이터를 불러오지 못했습니다."});
 
-/* ───── 렌더 함수 ───── */
-function render(query){
-  const root = document.getElementById("root");
-  root.innerHTML = "";
-  const today = new Date().setHours(0,0,0,0);
-  const byGame = {};
-
+function render(q){
+  const root=document.getElementById("root");root.innerHTML="";
+  const today=new Date().setHours(0,0,0,0);const byGame={};
   window.coupons.forEach(c=>{
-    const exp = c.expires ? new Date(c.expires).setHours(0,0,0,0) : null;
-    if(exp && exp < today) return;                               // 만료 필터
-    if(query && !c.game.toLowerCase().includes(query.toLowerCase())) return; // 검색 필터
-    (byGame[c.game] = byGame[c.game] || []).push(c.code);
+    const exp=c.expires?new Date(c.expires).setHours(0,0,0,0):null;
+    if(exp&&exp<today)return;
+    if(q&&!c.game.toLowerCase().includes(q.toLowerCase()))return;
+    (byGame[c.game]=byGame[c.game]||[]).push(c.code);
   });
-
-  if(!Object.keys(byGame).length){
-    root.textContent = "쿠폰이 없습니다.";
-    return;
-  }
-
-  for(const game of Object.keys(byGame).sort()){
-    const h = document.createElement("div");
-    h.className = "game";
-    h.textContent = game;
-    root.appendChild(h);
-
-    const ul = document.createElement("ul");
-    root.appendChild(ul);
-
-    byGame[game].forEach(code=>{
-      const li = document.createElement("li");
-      li.textContent = code;
-      li.onclick = ()=>{
-        navigator.clipboard.writeText(code)
-          .then(()=>{
-            li.classList.add("copied");
-            setTimeout(()=>li.classList.remove("copied"),800);
-          });
-      };
-      ul.appendChild(li);
+  if(!Object.keys(byGame).length){root.textContent="쿠폰이 없습니다.";return;}
+  for(const g of Object.keys(byGame).sort()){
+    const h=document.createElement("div");h.className="game";h.textContent=g;root.appendChild(h);
+    const ul=document.createElement("ul");root.appendChild(ul);
+    byGame[g].forEach(code=>{
+      const li=document.createElement("li");li.textContent=code;ul.appendChild(li);
+      li.onclick=()=>navigator.clipboard.writeText(code).then(()=>{li.classList.add("copied");setTimeout(()=>li.classList.remove("copied"),800);});
     });
   }
 }
-
-/* ───── 검색 이벤트 ───── */
-document.getElementById("search")
-        .addEventListener("input",e=>render(e.target.value));
+document.getElementById("search").addEventListener("input",e=>render(e.target.value));
 </script>
 
-</body>
-</html>
+</body></html>
