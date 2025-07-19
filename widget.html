@@ -3,49 +3,78 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Roblox Coupons Widget</title>
+<title>Roblox 쿠폰 위젯</title>
 <style>
-body{margin:0;font-family:system-ui,Apple SD Gothic Neo,sans-serif;line-height:1.5;padding:16px}
-#search{width:100%;max-width:360px;padding:8px;font-size:1rem;margin-bottom:12px;border:1px solid #bbb;border-radius:6px}
-.game{margin:20px 0 6px;font-weight:700;font-size:1.1rem}
+body{margin:0;padding:18px;font-family:system-ui,Apple SD Gothic Neo,sans-serif;line-height:1.55}
+#search{width:100%;max-width:380px;padding:8px 10px;border:1px solid #bbb;border-radius:6px;margin-bottom:16px;font-size:1rem}
+.game{margin:24px 0 6px;font-weight:700;font-size:1.15rem}
 ul{padding:0;margin:0;list-style:none;display:flex;flex-wrap:wrap;gap:6px}
-li{background:#f8f8f8;border:1px solid #ddd;border-radius:6px;padding:5px 8px;cursor:pointer;transition:.2s}
-li:hover{background:#eaeaea}.copied{background:#d5f9d9!important;border-color:#81ca86!important}
+li{background:#f3f3f3;border:1px solid #ddd;border-radius:6px;padding:6px 9px;cursor:pointer;transition:.2s}
+li:hover{background:#e7e7e7}
+.copied{background:#d3f8d4!important;border-color:#7bc382!important}
+.badge{font-size:.7rem;margin-left:4px;color:#888}
+@media (prefers-color-scheme:dark){
+  body{background:#121212;color:#ddd}
+  li{background:#1e1e1e;border-color:#444}
+  li:hover{background:#2a2a2a}
+  .copied{background:#235c28!important;border-color:#47b34f!important}
+}
 </style>
-</head><body>
+</head>
+<body>
 
 <input id="search" placeholder="게임 이름을 입력…" />
 <div id="root">로딩 중…</div>
 
 <script>
-const DATA_URL = "./coupons.json";      /* ← 반드시 상대경로 */
-const REFRESH_HOURS = 6;
-
+const DATA_URL = "./coupons.json";     // 같은 GitHub Pages origin
 fetch(DATA_URL,{cache:"reload"})
   .then(r=>r.json())
   .then(j=>{window.coupons=j;render("")})
-  .catch(e=>{console.error(e);document.getElementById("root").textContent="쿠폰 데이터를 불러오지 못했습니다."});
+  .catch(()=>document.getElementById("root").textContent="쿠폰 데이터를 불러오지 못했습니다.");
 
 function render(q){
-  const root=document.getElementById("root");root.innerHTML="";
-  const today=new Date().setHours(0,0,0,0);const byGame={};
+  const root=document.getElementById("root");
+  root.innerHTML="";
+  const today=new Date().setHours(0,0,0,0);
+  const byGame={};
+
   window.coupons.forEach(c=>{
-    const exp=c.expires?new Date(c.expires).setHours(0,0,0,0):null;
-    if(exp&&exp<today)return;
-    if(q&&!c.game.toLowerCase().includes(q.toLowerCase()))return;
-    (byGame[c.game]=byGame[c.game]||[]).push(c.code);
+    if(q && !c.game.toLowerCase().includes(q.toLowerCase())) return;
+    (byGame[c.game]=byGame[c.game]||[]).push(c);
   });
-  if(!Object.keys(byGame).length){root.textContent="쿠폰이 없습니다.";return;}
+
+  if(!Object.keys(byGame).length){
+    root.textContent="쿠폰이 없습니다.";return;
+  }
+
   for(const g of Object.keys(byGame).sort()){
-    const h=document.createElement("div");h.className="game";h.textContent=g;root.appendChild(h);
+    const head=document.createElement("div");
+    head.className="game";head.textContent=g;root.appendChild(head);
+
     const ul=document.createElement("ul");root.appendChild(ul);
-    byGame[g].forEach(code=>{
-      const li=document.createElement("li");li.textContent=code;ul.appendChild(li);
-      li.onclick=()=>navigator.clipboard.writeText(code).then(()=>{li.classList.add("copied");setTimeout(()=>li.classList.remove("copied"),800);});
+    byGame[g].forEach(c=>{
+      const li=document.createElement("li");
+      li.textContent=c.code;
+
+      if(c.verified){
+        const v=document.createElement("span");
+        v.className="badge";v.textContent=`✔${c.verified}`;
+        li.appendChild(v);
+      }
+
+      li.onclick=()=>{
+        navigator.clipboard.writeText(c.code).then(()=>{
+          li.classList.add("copied");
+          setTimeout(()=>li.classList.remove("copied"),800);
+        });
+      };
+      ul.appendChild(li);
     });
   }
 }
 document.getElementById("search").addEventListener("input",e=>render(e.target.value));
 </script>
 
-</body></html>
+</body>
+</html>
