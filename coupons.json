@@ -1,5 +1,665 @@
 [
   {
+    "game": "Anime Champions Simulator",
+    "code": "&#8220;TWITTER&#8221;",
+    "expires": null
+  },
+  {
+    "game": "Anime Champions Simulator",
+    "code": "(NEW)",
+    "expires": null
+  },
+  {
+    "game": "Anime Champions Simulator",
+    "code": "100KFAVES",
+    "expires": null
+  },
+  {
+    "game": "Anime Champions Simulator",
+    "code": "100THOUSAND",
+    "expires": null
+  },
+  {
+    "game": "Anime Champions Simulator",
+    "code": "10KPLAY",
+    "expires": null
+  },
+  {
+    "game": "Anime Champions Simulator",
+    "code": "150KLIKESTY",
+    "expires": null
+  },
+  {
+    "game": "Anime Champions Simulator",
+    "code": "170KFAVES",
+    "expires": null
+  },
+  {
+    "game": "Anime Champions Simulator",
+    "code": "1MILLION",
+    "expires": null
+  },
+  {
+    "game": "Anime Champions Simulator",
+    "code": "200MILLION",
+    "expires": null
+  },
+  {
+    "game": "Anime Champions Simulator",
+    "code": "ACSFOODEVENT",
+    "expires": null
+  },
+  {
+    "game": "Anime Champions Simulator",
+    "code": "ADDEDSKINS",
+    "expires": null
+  },
+  {
+    "game": "Anime Champions Simulator",
+    "code": "ALPHA1",
+    "expires": null
+  },
+  {
+    "game": "Anime Champions Simulator",
+    "code": "CHAINSAWS",
+    "expires": null
+  },
+  {
+    "game": "Anime Champions Simulator",
+    "code": "CLOVERPOWER",
+    "expires": null
+  },
+  {
+    "game": "Anime Champions Simulator",
+    "code": "DAILYQUEST",
+    "expires": null
+  },
+  {
+    "game": "Anime Champions Simulator",
+    "code": "DAILYQUEST2",
+    "expires": null
+  },
+  {
+    "game": "Anime Champions Simulator",
+    "code": "DAILYQUEST3",
+    "expires": null
+  },
+  {
+    "game": "Anime Champions Simulator",
+    "code": "DAILYQUEST4",
+    "expires": null
+  },
+  {
+    "game": "Anime Champions Simulator",
+    "code": "DAILYQUEST5",
+    "expires": null
+  },
+  {
+    "game": "Anime Champions Simulator",
+    "code": "DEATHBALL",
+    "expires": null
+  },
+  {
+    "game": "Anime Champions Simulator",
+    "code": "DELAYED",
+    "expires": null
+  },
+  {
+    "game": "Anime Champions Simulator",
+    "code": "DIRTYGALAXY",
+    "expires": null
+  },
+  {
+    "game": "Anime Champions Simulator",
+    "code": "DUNGEONBUFF",
+    "expires": null
+  },
+  {
+    "game": "Anime Champions Simulator",
+    "code": "DUNGEONSHUTDOWN",
+    "expires": null
+  },
+  {
+    "game": "Anime Champions Simulator",
+    "code": "EASTERSUNDAY",
+    "expires": null
+  },
+  {
+    "game": "Anime Champions Simulator",
+    "code": "EASTERWEEK",
+    "expires": null
+  },
+  {
+    "game": "Anime Champions Simulator",
+    "code": "ECLIPSEUPDATE",
+    "expires": null
+  },
+  {
+    "game": "Anime Champions Simulator",
+    "code": "EIGHTLEGS",
+    "expires": null
+  },
+  {
+    "game": "Anime Champions Simulator",
+    "code": "EVENTS",
+    "expires": null
+  },
+  {
+    "game": "Anime Champions Simulator",
+    "code": "EXTRADAILY",
+    "expires": null
+  },
+  {
+    "game": "Anime Champions Simulator",
+    "code": "FEEDBACKTY",
+    "expires": null
+  },
+  {
+    "game": "Anime Champions Simulator",
+    "code": "FIXERUPPER",
+    "expires": null
+  },
+  {
+    "game": "Anime Champions Simulator",
+    "code": "FREEDEVPACK",
+    "expires": null
+  },
+  {
+    "game": "Anime Champions Simulator",
+    "code": "FREEKEYS",
+    "expires": null
+  },
+  {
+    "game": "Anime Champions Simulator",
+    "code": "G3HYPE",
+    "expires": null
+  },
+  {
+    "game": "Anime Champions Simulator",
+    "code": "GALAXY2HYPE",
+    "expires": null
+  },
+  {
+    "game": "Anime Champions Simulator",
+    "code": "GALAXY3SOON",
+    "expires": null
+  },
+  {
+    "game": "Anime Champions Simulator",
+    "code": "GAMESSHUTDOWN",
+    "expires": null
+  },
+  {
+    "game": "Anime Champions Simulator",
+    "code": "GEARGOALS",
+    "expires": null
+  },
+  {
+    "game": "Anime Champions Simulator",
+    "code": "GHOUL",
+    "expires": null
+  },
+  {
+    "game": "Anime Champions Simulator",
+    "code": "GIGANTIC",
+    "expires": null
+  },
+  {
+    "game": "Anime Champions Simulator",
+    "code": "GIVEAWAYS",
+    "expires": null
+  },
+  {
+    "game": "Anime Champions Simulator",
+    "code": "GIVEMEASTRAL",
+    "expires": null
+  },
+  {
+    "game": "Anime Champions Simulator",
+    "code": "GIVEMEDPS",
+    "expires": null
+  },
+  {
+    "game": "Anime Champions Simulator",
+    "code": "GIVEMELUCK",
+    "expires": null
+  },
+  {
+    "game": "Anime Champions Simulator",
+    "code": "GUMMYBEAR",
+    "expires": null
+  },
+  {
+    "game": "Anime Champions Simulator",
+    "code": "HALLOWEEN2024",
+    "expires": null
+  },
+  {
+    "game": "Anime Champions Simulator",
+    "code": "HAPPY4TH",
+    "expires": null
+  },
+  {
+    "game": "Anime Champions Simulator",
+    "code": "HAPPYEASTERACS",
+    "expires": null
+  },
+  {
+    "game": "Anime Champions Simulator",
+    "code": "HAPPYFIX",
+    "expires": null
+  },
+  {
+    "game": "Anime Champions Simulator",
+    "code": "HAPPYHALLOWEEN",
+    "expires": null
+  },
+  {
+    "game": "Anime Champions Simulator",
+    "code": "HAPPYHOLIDAY",
+    "expires": null
+  },
+  {
+    "game": "Anime Champions Simulator",
+    "code": "HAPPYMONDAY",
+    "expires": null
+  },
+  {
+    "game": "Anime Champions Simulator",
+    "code": "HAPPYNEWYEAR",
+    "expires": null
+  },
+  {
+    "game": "Anime Champions Simulator",
+    "code": "HAPPYTHANKSGIVING",
+    "expires": null
+  },
+  {
+    "game": "Anime Champions Simulator",
+    "code": "IAMATOMIC",
+    "expires": null
+  },
+  {
+    "game": "Anime Champions Simulator",
+    "code": "JINGLEBELLS",
+    "expires": null
+  },
+  {
+    "game": "Anime Champions Simulator",
+    "code": "LAGBEGONE",
+    "expires": null
+  },
+  {
+    "game": "Anime Champions Simulator",
+    "code": "LASTCHANCE",
+    "expires": null
+  },
+  {
+    "game": "Anime Champions Simulator",
+    "code": "LASTCHANCEXP",
+    "expires": null
+  },
+  {
+    "game": "Anime Champions Simulator",
+    "code": "LETSGOGALAXY3",
+    "expires": null
+  },
+  {
+    "game": "Anime Champions Simulator",
+    "code": "LUCKBOOSTS",
+    "expires": null
+  },
+  {
+    "game": "Anime Champions Simulator",
+    "code": "LUCKYMONDAY",
+    "expires": null
+  },
+  {
+    "game": "Anime Champions Simulator",
+    "code": "MELTEDICECREAM",
+    "expires": null
+  },
+  {
+    "game": "Anime Champions Simulator",
+    "code": "MERCHANTFIX",
+    "expires": null
+  },
+  {
+    "game": "Anime Champions Simulator",
+    "code": "MERRYCHRISTMAS",
+    "expires": null
+  },
+  {
+    "game": "Anime Champions Simulator",
+    "code": "MISSINGEGGS",
+    "expires": null
+  },
+  {
+    "game": "Anime Champions Simulator",
+    "code": "NEWDUNGEONS",
+    "expires": null
+  },
+  {
+    "game": "Anime Champions Simulator",
+    "code": "NEWPASS",
+    "expires": null
+  },
+  {
+    "game": "Anime Champions Simulator",
+    "code": "NINJAWARUPDATE",
+    "expires": null
+  },
+  {
+    "game": "Anime Champions Simulator",
+    "code": "ORBENHANCED",
+    "expires": null
+  },
+  {
+    "game": "Anime Champions Simulator",
+    "code": "ORBLUCKBUFF",
+    "expires": null
+  },
+  {
+    "game": "Anime Champions Simulator",
+    "code": "OTMAPOLOGY",
+    "expires": null
+  },
+  {
+    "game": "Anime Champions Simulator",
+    "code": "OTMSAVEUS",
+    "expires": null
+  },
+  {
+    "game": "Anime Champions Simulator",
+    "code": "PATCHSUNDAY",
+    "expires": null
+  },
+  {
+    "game": "Anime Champions Simulator",
+    "code": "PATIENTZERO",
+    "expires": null
+  },
+  {
+    "game": "Anime Champions Simulator",
+    "code": "PUNCH",
+    "expires": null
+  },
+  {
+    "game": "Anime Champions Simulator",
+    "code": "QUESTFIX",
+    "expires": null
+  },
+  {
+    "game": "Anime Champions Simulator",
+    "code": "RAIDBUFF",
+    "expires": null
+  },
+  {
+    "game": "Anime Champions Simulator",
+    "code": "REDEEM",
+    "expires": null
+  },
+  {
+    "game": "Anime Champions Simulator",
+    "code": "REDEEMNOW",
+    "expires": null
+  },
+  {
+    "game": "Anime Champions Simulator",
+    "code": "RELEASE",
+    "expires": null
+  },
+  {
+    "game": "Anime Champions Simulator",
+    "code": "SAFETYFIRST",
+    "expires": null
+  },
+  {
+    "game": "Anime Champions Simulator",
+    "code": "SAWBLADERAID",
+    "expires": null
+  },
+  {
+    "game": "Anime Champions Simulator",
+    "code": "SCRAPPY",
+    "expires": null
+  },
+  {
+    "game": "Anime Champions Simulator",
+    "code": "SEASONPASSBUFF",
+    "expires": null
+  },
+  {
+    "game": "Anime Champions Simulator",
+    "code": "SEVENUP",
+    "expires": null
+  },
+  {
+    "game": "Anime Champions Simulator",
+    "code": "SHEEPLE",
+    "expires": null
+  },
+  {
+    "game": "Anime Champions Simulator",
+    "code": "SHOWDOWNCOSMICS",
+    "expires": null
+  },
+  {
+    "game": "Anime Champions Simulator",
+    "code": "SHOWDOWNSHUTDOWN",
+    "expires": null
+  },
+  {
+    "game": "Anime Champions Simulator",
+    "code": "SHOWUP",
+    "expires": null
+  },
+  {
+    "game": "Anime Champions Simulator",
+    "code": "SHUTDOWN1",
+    "expires": null
+  },
+  {
+    "game": "Anime Champions Simulator",
+    "code": "SHUTDOWN2",
+    "expires": null
+  },
+  {
+    "game": "Anime Champions Simulator",
+    "code": "SHUTDOWN3",
+    "expires": null
+  },
+  {
+    "game": "Anime Champions Simulator",
+    "code": "SHUTDOWN705",
+    "expires": null
+  },
+  {
+    "game": "Anime Champions Simulator",
+    "code": "SHUTDOWN7052",
+    "expires": null
+  },
+  {
+    "game": "Anime Champions Simulator",
+    "code": "SHUTDOWNBACKINTOWN",
+    "expires": null
+  },
+  {
+    "game": "Anime Champions Simulator",
+    "code": "SLIME",
+    "expires": null
+  },
+  {
+    "game": "Anime Champions Simulator",
+    "code": "SORRYTOURNEY",
+    "expires": null
+  },
+  {
+    "game": "Anime Champions Simulator",
+    "code": "SPOOKYGREMLINS",
+    "expires": null
+  },
+  {
+    "game": "Anime Champions Simulator",
+    "code": "SUMMERFIX",
+    "expires": null
+  },
+  {
+    "game": "Anime Champions Simulator",
+    "code": "SUMMERHYPE",
+    "expires": null
+  },
+  {
+    "game": "Anime Champions Simulator",
+    "code": "SUMMERSHOWDOWN",
+    "expires": null
+  },
+  {
+    "game": "Anime Champions Simulator",
+    "code": "SUMMERSOON",
+    "expires": null
+  },
+  {
+    "game": "Anime Champions Simulator",
+    "code": "SUMMERSUNDAY",
+    "expires": null
+  },
+  {
+    "game": "Anime Champions Simulator",
+    "code": "SURVEY5K",
+    "expires": null
+  },
+  {
+    "game": "Anime Champions Simulator",
+    "code": "THANKS50MIL",
+    "expires": null
+  },
+  {
+    "game": "Anime Champions Simulator",
+    "code": "THEGAMES",
+    "expires": null
+  },
+  {
+    "game": "Anime Champions Simulator",
+    "code": "THISISFINE",
+    "expires": null
+  },
+  {
+    "game": "Anime Champions Simulator",
+    "code": "TOURNAMENTS",
+    "expires": null
+  },
+  {
+    "game": "Anime Champions Simulator",
+    "code": "TOWERSTUFF",
+    "expires": null
+  },
+  {
+    "game": "Anime Champions Simulator",
+    "code": "TRICKORTREAT",
+    "expires": null
+  },
+  {
+    "game": "Anime Champions Simulator",
+    "code": "TURKEYDAY",
+    "expires": null
+  },
+  {
+    "game": "Anime Champions Simulator",
+    "code": "TURNDOWN4WHAT",
+    "expires": null
+  },
+  {
+    "game": "Anime Champions Simulator",
+    "code": "TYBURGER",
+    "expires": null
+  },
+  {
+    "game": "Anime Champions Simulator",
+    "code": "ULTRAINSTINCT",
+    "expires": null
+  },
+  {
+    "game": "Anime Champions Simulator",
+    "code": "UPDATE1",
+    "expires": null
+  },
+  {
+    "game": "Anime Champions Simulator",
+    "code": "UPDATE12",
+    "expires": null
+  },
+  {
+    "game": "Anime Champions Simulator",
+    "code": "UPDATE13",
+    "expires": null
+  },
+  {
+    "game": "Anime Champions Simulator",
+    "code": "UPDATE17",
+    "expires": null
+  },
+  {
+    "game": "Anime Champions Simulator",
+    "code": "UPDATE2",
+    "expires": null
+  },
+  {
+    "game": "Anime Champions Simulator",
+    "code": "UPDATE25",
+    "expires": null
+  },
+  {
+    "game": "Anime Champions Simulator",
+    "code": "UPDATE3",
+    "expires": null
+  },
+  {
+    "game": "Anime Champions Simulator",
+    "code": "UPDATEDELAY",
+    "expires": null
+  },
+  {
+    "game": "Anime Champions Simulator",
+    "code": "UPDATESHUTDOWN",
+    "expires": null
+  },
+  {
+    "game": "Anime Champions Simulator",
+    "code": "VIRTUALDUNGEON",
+    "expires": null
+  },
+  {
+    "game": "Anime Champions Simulator",
+    "code": "WAITINGGIANTS",
+    "expires": null
+  },
+  {
+    "game": "Anime Champions Simulator",
+    "code": "WAITINGGIANTSTM",
+    "expires": null
+  },
+  {
+    "game": "Anime Champions Simulator",
+    "code": "WEEKENDBONUS",
+    "expires": null
+  },
+  {
+    "game": "Anime Champions Simulator",
+    "code": "WINTERISCOMING",
+    "expires": null
+  },
+  {
+    "game": "Anime Champions Simulator",
+    "code": "WOODBALL",
+    "expires": null
+  },
+  {
+    "game": "Anime Champions Simulator",
+    "code": "WOW100MIL",
+    "expires": null
+  },
+  {
     "game": "Blox Fruits",
     "code": "ADMINFIGHT",
     "expires": "2025-08-30"
