@@ -78,7 +78,7 @@ def api_valid(code: str) -> bool:
         return True   # 네트워크 오류 → 통과로 간주
 
 # 5️⃣ 기존 JSON 불러오기
-def load_old():
+def load_old() -> list[dict]:
     try:
         with open("coupons.json", encoding="utf-8") as f:
             return json.load(f)
@@ -87,7 +87,9 @@ def load_old():
 
 # 6️⃣ 메인
 def main():
-    final, seen = [], set(load_old())
+    old = load_old()
+    seen = {c["code"] for c in old}     # ← dict 대신 code만 set으로 관리
+    final = []
 
     for game, srcs in sources_map.items():
         for url, pattern in srcs:
@@ -95,22 +97,23 @@ def main():
                 html_txt = requests.get(url, headers=UA, timeout=25).text
                 html_txt = strip_expired(html_txt)
             except Exception as e:
-                print("⚠️ Fetch fail:", game, e); continue
+                print("⚠️ Fetch fail:", game, e)
+                continue
 
             for raw in re.findall(pattern, html_txt, re.I):
                 code = clean(raw)
-                if not code or code in seen: continue
+                if not code or code in seen:
+                    continue
 
+                # 글로벌 프로모코드는 API 추가 검증
                 if game == "Roblox Promo" and not api_valid(code):
-                    print("🗑️ Promo expired:", code); continue
+                    print("🗑️ Promo expired:", code)
+                    continue
 
-                final.append({
-                    "game": game,
-                    "code": code,
-                    "verified": DAY
-                })
+                final.append({"game": game, "code": code, "verified": DAY})
                 seen.add(code)
 
+    # 최종 저장
     final.sort(key=lambda x: (x["game"], x["code"]))
     pathlib.Path("coupons.json").write_text(
         json.dumps(final, ensure_ascii=False, indent=2),
