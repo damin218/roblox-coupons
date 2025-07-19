@@ -1,121 +1,130 @@
 #!/usr/bin/env python3
-# coupon_scraper.py ― Roblox TOP100 인기 게임 쿠폰 자동 수집기
+# coupon_scraper.py ― Roblox 쿠폰 수집 + 로깅 강화판
 """
-1) Roblox Charts API → 인기 TOP N 게임 이름 리스트 획득
-2) sources_map 에 매핑된 전문 사이트에서 쿠폰 추출
-3) 나머지 게임은 Google 검색 → <code> 태그 파싱(Fallback)
-4) HTML 내 del/strike/Expired 제거 → clean()으로 유효 코드만 필터
-5) 중복 제거 → coupons.json 저장
+1) TOP_GAMES 리스트 순환
+2) sources_map 우선 시도 → debug print
+3) 실패 시 Google Fallback → debug print
+4) clean() 후 중복제거 → result 리스트
+5) coupons.json 에 저장 + 최종 debug
 """
 
 import re, json, html, datetime, pathlib, urllib.parse, requests
 from bs4 import BeautifulSoup
 
-# ── 설정 ───────────────────────────────────────────────
-UA      = {"User-Agent":"Mozilla/5.0"}
-TODAY   = datetime.date.today().isoformat()
-TOP_N   = 200   # 상위 N 게임 (필요시 50, 200 등으로 변경)
+# ── 설정 ────────────────────────────────────────────────
+UA = {"User-Agent": "Mozilla/5.0"}
+TODAY = datetime.date.today().isoformat()
+# 수집할 인기 게임 개수
+TOP_N = 50
 
-# ── 1) Roblox Charts API 에서 인기 게임 리스트 가져오기 ──
-def fetch_top_games(limit=TOP_N):
-    url = f"https://games.roblox.com/v1/games/list?sortType=top&startRows=0&maxRows={limit}"
+# ── 1) 인기 게임 리스트 가져오기 ───────────────────────────
+def fetch_top_games(n=TOP_N):
+    url = f"https://games.roblox.com/v1/games/list?sortType=top&startRows=0&maxRows={n}"
     try:
-        return [g["name"] for g in requests.get(url, headers=UA, timeout=15).json().get("games",[])]
-    except Exception:
-        # API 실패 시 최소한 20개 하드코드
-        return ["Blox Fruits","Shindo Life","Bee Swarm Simulator","Anime Champions Simulator",
-                "Blue Lock Rivals","King Legacy","Project Slayers","All Star Tower Defense",
-                "Blade Ball","Pet Simulator 99","Weapon Fighting Simulator","Anime Fighters Simulator",
-                "Adopt Me!","Murder Mystery 2","Tower of Hell","Arsenal","Brookhaven","Adopt Me!",
-                "MM2","Arsenal","Tower of Hell"][:limit]
+        data = requests.get(url, headers=UA, timeout=15).json()
+        games = [g["name"] for g in data.get("games",[])]
+        print(f"[fetch_top_games] got {len(games)} games")
+        return games
+    except Exception as e:
+        print(f"[fetch_top_games] ERROR: {e}")
+        # 최소 10개 하드코드로 대체
+        return ["Blox Fruits","Shindo Life","Bee Swarm Simulator",
+                "Blade Ball","Anime Champions Simulator","Brookhaven",
+                "Adopt Me!","Murder Mystery 2","Tower of Hell","Arsenal"]
 
 TOP_GAMES = fetch_top_games()
 
-# ── 2) 전문 사이트 sources_map (약 20개 게임) ──
+# ── 2) sources_map (전문 사이트) ───────────────────────────
 sources_map = {
-    "Blox Fruits": [
-        ("https://www.pcgamesn.com/blox-fruits/codes",      r"\*\s+([A-Za-z0-9_!]{5,20})\s+-"),
-        ("https://gamerant.com/blox-fruits-codes/",         r"<code>([^<\s]{5,20})</code>"),
+    "Blox Fruits":[
+        ("https://www.pcgamesn.com/blox-fruits/codes", r"\*\s+([A-Za-z0-9_!]{5,20})\s+-"),
+        ("https://gamerant.com/blox-fruits-codes/",       r"<code>([^<\s]{5,20})</code>")
     ],
     "Shindo Life":[
-        ("https://www.pockettactics.com/shindo-life/codes",r"\*\s+([A-Za-z0-9_!]{5,20})\s+-"),
+        ("https://www.pockettactics.com/shindo-life/codes", r"\*\s+([A-Za-z0-9_!]{5,20})\s+-")
     ],
-    "Bee Swarm Simulator":[
-        ("https://beebom.com/roblox-bee-swarm-simulator-codes/",r"\*\s+([A-Za-z0-9_!]{5,20})[:\s-]"),
-    ],
-    # … 위와 비슷한 형식으로 20개 게임 매핑 유지 …
+    # … 필요하면 여기에 더 추가 …
 }
 
-# ── 3) 페이지 HTML에서 만료 표시 제거 ─────────────────
-def strip_expired(html_txt:str)->str:
-    s=BeautifulSoup(html_txt,"html.parser")
-    for t in s.find_all(["del","strike"]): t.decompose()
-    return re.sub(r"(?i)expired","",str(s))
+# ── 3) HTML 내 만료 표시 제거 ─────────────────────────────
+def strip_expired(text):
+    soup = BeautifulSoup(text, "html.parser")
+    for tag in soup.find_all(["del","strike"]): tag.decompose()
+    return re.sub(r"(?i)expired","", str(soup))
 
-# ── 4) 코드 정리 & 유효성 검사 ────────────────────────
-def clean(raw:str)->str:
-    c=re.sub(r"[^\w!]","",html.unescape(raw).strip().upper())
-    return c if 5<=len(c)<=20 and c[0].isalpha() else ""
+# ── 4) 코드 정리 & 유효성 검사 ─────────────────────────────
+def clean(raw):
+    s = html.unescape(raw).strip().upper()
+    code = re.sub(r"[^\w!]","", s)
+    if 5 <= len(code) <= 20 and code[0].isalpha():
+        return code
+    return ""
 
-# ── 5) Google Fallback ────────────────────────────────
-def google_codes(game:str)->list[str]:
-    q=urllib.parse.quote_plus(f"{game} codes")
+# ── 5) Google Fallback ────────────────────────────────────
+def google_codes(game):
+    query = urllib.parse.quote_plus(f"{game} codes")
+    url = f"https://www.google.com/search?q={query}&num=5&hl=en"
     try:
-        html_txt=requests.get(f"https://www.google.com/search?q={q}&num=5",headers=UA,timeout=10).text
-        links=re.findall(r"/url\?q=(https://[^&]+)",html_txt)
-    except:
+        resp = requests.get(url, headers=UA, timeout=15).text
+    except Exception as e:
+        print(f"[{game}] Google fetch ERROR: {e}")
         return []
-    codes=[]
+    links = re.findall(r"/url\?q=(https://[^&]+)", resp)
+    codes = []
     for link in links[:3]:
         try:
-            p=requests.get(urllib.parse.unquote(link),headers=UA,timeout=10).text
-            p=html.unescape(p)
-            codes+=re.findall(r"<code>([^<\s]{5,20})</code>",p)
-        except:
-            continue
+            page = requests.get(link, headers=UA, timeout=15).text
+            page = html.unescape(page)
+            found = re.findall(r"<code>([^<\s]{5,20})</code>", page, flags=re.I)
+            print(f"[{game}][Google] {link} → found {len(found)} codes")
+            codes += found
+        except Exception as e:
+            print(f"[{game}][Google] ERROR on {link}: {e}")
     return codes
 
-# ── 6) 이전 JSON 불러오기 ───────────────────────────────
-def load_old()->list[dict]:
-    try: return json.load(open("coupons.json",encoding="utf-8"))
-    except: return []
+# ── 6) 이전 JSON 로드 ─────────────────────────────────────
+def load_old():
+    try:
+        return json.load(open("coupons.json", encoding="utf-8"))
+    except FileNotFoundError:
+        return []
 
-# ── 7) 메인 ───────────────────────────────────────────
+# ── 7) 메인 로직 ─────────────────────────────────────────
 def main():
     old = load_old()
     seen = {c["code"] for c in old}
-    result=[]
+    result = []
 
     for game in TOP_GAMES:
-        raw_list=[]
-        # ① 전문 사이트 우선
-        for url,pattern in sources_map.get(game,[]):
+        raw_codes = []
+        # --- 전문 사이트 시도 ---
+        for url, pat in sources_map.get(game, []):
             try:
-                txt=requests.get(url,headers=UA,timeout=15).text
-                txt=strip_expired(txt)
-                found=re.findall(pattern,txt,flags=re.I)
-                print(f"[{game}] {url} → found {len(found)}")
-                raw_list+=found
+                txt = requests.get(url, headers=UA, timeout=15).text
+                txt = strip_expired(txt)
+                found = re.findall(pat, txt, flags=re.I)
+                print(f"[{game}] {url} → found {len(found)} raw codes")
+                raw_codes += found
             except Exception as e:
-                print(f"[{game}] fetch fail {e}")
+                print(f"[{game}] ERROR fetching {url}: {e}")
 
-        # ② fallback
-        if not raw_list:
-            print(f"[{game}] no codes found → Google fallback")
-            raw_list=google_codes(game)
+        # --- 전부 실패 시 Google fallback ---
+        if not raw_codes:
+            print(f"[{game}] no expert source → Google fallback")
+            raw_codes = google_codes(game)
 
-        # ③ clean & dedupe
-        for raw in raw_list:
-            c=clean(raw)
-            if c and c not in seen:
-                result.append({"game":game,"code":c,"verified":TODAY})
-                seen.add(c)
+        # --- 클린업 & 중복 제거 ---
+        for raw in raw_codes:
+            code = clean(raw)
+            if code and code not in seen:
+                seen.add(code)
+                result.append({"game":game,"code":code,"verified":TODAY})
 
-    # ④ save
+    # --- 저장 & 최종 로그 ---
     result.sort(key=lambda x:(x["game"],x["code"]))
     pathlib.Path("coupons.json").write_text(
-        json.dumps(result,ensure_ascii=False,indent=2),encoding="utf-8")
-    print(f"✅ Saved {len(result)} codes across {len({r['game'] for r in result})} games")
+        json.dumps(result, ensure_ascii=False, indent=2), encoding="utf-8")
+    print(f"✅ Finished. {len(result)} codes across {len({r['game'] for r in result})} games")
 
 if __name__=="__main__":
     main()
